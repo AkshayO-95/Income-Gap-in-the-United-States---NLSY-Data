@@ -1,0 +1,564 @@
+---
+title: ' Significance of Race, Birth Country, Urban/Rural and Family Size on Income
+  Gap using NLSY data 1978'
+author: "Akshay Oza"
+date: "12/7/2019"
+output:
+  html_document:
+    toc: yes
+    toc_depth: '4'
+---
+ 
+
+## Importing all the required libraries
+First we started by importing all the required libraries : tidyverse, knitr,ggplot2 and plotly.
+
+```{r}
+library(tidyverse)
+```
+```{r}
+library(knitr)
+options(scipen=4)
+```
+
+```{r}
+library(ggplot2)
+library(plotly)
+library(ggpubr)
+```
+
+
+## Limitation
+
+1) The final dataset contains 5003 rows out of the original 12000 rows. The first reason is removing all the negative values, income =0 and top-coded values. 
+2) The sample is not equally ditributed across all the parameters.
+3) Tha analysis doesn't account for collinearity or correlation between the independent variables. 
+
+## Importing the data set 
+Now, let's import the data set and change the column names to access the data
+
+```{r}
+nlsy <- read_csv("http://www.andrew.cmu.edu/user/achoulde/94842/final_project/nlsy79/nlsy79_income.csv")
+```
+### **a)** Changing the column names and handling the negative values
+
+**Resaearch Questions**
+
+**There are two research questions:** 
+1) Whethere the income gap between men and women is significant?
+2) Whether income gap depends significantly on variables : Race,   Birth Country, Urban/Rural and Family Size? 
+
+**The variables that I am taking for this analysis are :** `income`,`gender`,`race`,`birth_country`,`family_size` and `urban/rural`.
+
+**Description of variables:**
+
+**Income(2012)**: Income is a numeric variable. Income is in US$. There are some values (top 2%) which are top-coded. It's income from wages and salary.
+
+**Gender(1978)**: Gender is a categorical variable. There are two categories- Male and Female (Men or Women).
+
+**Race(1978)**: Race is a categorical variable. There are three categories- Black, Hispanic and Others(Non-Black Non-Hispanic).
+
+**Birth Country(1978)**:Birth Country is a categorical variable. There are two categories- Outside US and (in) US.
+
+**Urban/ Rural(2012)**: Gender is a categorical variable. There are two categories- Male and Female (Men or Women).
+
+**Family Size(2012)**: Family is a discrete numeric variable.
+
+
+```{r}
+colnames(nlsy) <- c("VERSION_R25_2012",
+    "CASEID_1979",
+    "birth_country",
+    "FAM-POB_1979",
+    "FAM-3_1979",
+    "FAM-3A_1979",
+    "FAM-RES_1979",
+    "FAM-6_1979",
+    "R_REL-1_COL_1979",
+    "SCHOOL-31_1979",
+    "MIL-6_1979",
+    "WOMENS-ROLES_000001_1979",
+    "WOMENS-ROLES_000002_1979",
+    "WOMENS-ROLES_000003_1979",
+    "WOMENS-ROLES_000004_1979",
+    "WOMENS-ROLES_000006_1979",
+    "WOMENS-ROLES_000007_1979",
+    "WOMENS-ROLES_000008_1979",
+    "EXP-OCC_1979",
+    "EXP-9_1979",
+    "race",
+    "gender",
+    "MARSTAT-KEY_1979",
+    "FAMSIZE_1979",
+    "POVSTATUS_1979",
+    "POLICE-1_1980",
+    "POLIC-1C_1980",
+    "POLICE-2_1980",
+    "ALCH-2_1983",
+    "DS-8_1984",
+    "DS-9_1984",
+    "Q13-5_TRUNC_REVISED_1990",
+    "POVSTATUS_1990",
+    "HGCREV90_1990",
+    "jobs.num",
+    "NUMCH90_1990",
+    "AGEYCH90_1990",
+    "DS-12_1998",
+    "DS-13_1998",
+    "INDALL-EMP.01_2000",
+    "CPSOCC80.01_2000",
+    "OCCSP-55I_CODE_2000",
+    "Q2-15B_2000",
+    "Q10-2_2000",
+    "Q13-5_TRUNC_REVISED_2000",
+    "FAMSIZE_2000",
+    "TNFI_TRUNC_2000",
+    "POVSTATUS_2000",
+    "MARSTAT-COL_2000",
+    "MARSTAT-KEY_2000",
+    "MO1M1B_XRND",
+    "Q2-10B~Y_2012",
+    "INDALL-EMP.01_2012",
+    "OCCALL-EMP.01_2012",
+    "OCCSP-55I_CODE_2012",
+    "Q2-15A_2012",
+    "Q12-6_2012",
+    "income",
+    "Q13-5_SR000001_2012",
+    "Q13-5_SR000002_2012",
+    "Q13-18_TRUNC_2012",
+    "Q13-18_SR000001_TRUNC_2012",
+    "family_size",
+    "REGION_2012",
+    "HGC_2012",
+    "urban_or_rural",
+    "JOBSNUM_2012")
+
+```
+After changing the column names for the required variables, I converted all the negative values into NA. From all the attributes I chose, there were around more than 5400 entries that were "Non-Interview". After browsing the NLSY website, it turns out that "Non-interview" value is given for participants who are non-locatable, deceased or refused to take the survey; which means that their data is not available. 
+Also the attributes chosen for this analysis: `income`,`gender`,`race`,`birth_country`,`family_size` and `urban/rural` have no negative value entry except for -5 (non-interview) and also some participants refused to answer (-1) which also did not provide any data.
+
+Thus, I decided to remove all the negative values from the dataset. 
+
+
+```{r}
+nlsy[nlsy < 0] <- NA
+
+
+```
+
+## Exploring the data 
+
+### **a)** Recoding the factors
+
+Before exploring the data I recoded the factors for categorical variables since all the entries are numeric. 
+
+```{r}
+nlsy <- mutate(nlsy, gender = recode_factor(gender, 
+                                      `1` = "Male",
+                                      `2` = "Female"),
+                      birth_country = recode_factor(birth_country,
+                                       `2` = "Outside US",`1` = "US"),
+              
+               race = recode_factor(race,
+                                    `3` = "Other",
+                                    `2` = "Black",
+                                    `1` = "Hispanic"
+                                    ),
+               urban_or_rural= recode_factor( urban_or_rural,
+                                           `0` = "rural",
+                                        `1` = "urban",
+                                        `2` = "unknown"))
+
+```
+
+### **b)** Filtering the dataset
+
+Since unknown values in `urban_or_rural` could create a problem in analysing the data, I removed all the unknown values by using `filter` function. After filtering,I dropped the "unknown" level since we don't need it in our analysis.  I selected the attributes required for the analysis using `select` function and omitted all the missing values (NA) using the `na.omit` function. 
+
+```{r}
+
+nlsy.data <- nlsy %>% filter(urban_or_rural != "unknown") %>% droplevels(nlsy$urban_or_rural)%>% select(CASEID_1979,income,gender,race,birth_country,urban_or_rural,family_size)
+nlsy.data <- na.omit(nlsy.data)
+kable(head(nlsy.data))
+
+```
+
+Above is the sample data from `nlsy.data` that has the required attributes. There are `r nrow(nlsy.data)` rows in the dataset `nlsy.data` but it still has top-coded values and income values which are 0.  
+
+### **c)** Summary of `nlsy.data`
+```{r}
+nlsy.data_summary <- nlsy.data %>% select(income,gender,race,birth_country,urban_or_rural,family_size)
+nlsy.summary <- summary(nlsy.data_summary)
+nlsy.summary_kable <- kable(summary(nlsy.data_summary))
+nlsy.summary_kable
+```
+
+The above summary shows that the mean income is 41371 and the median income is 30000. This might be an indication that the income distribution for this dataset is positively skewed or right skewed. This can be also seen in the histogram below.  The above summary also tells us the count of different factors in categorical variables - `gender`, `race`, `birth_country`,`urban_or_rural`. The average family size in the dataset is 2.6 (approximately 3). 
+
+```{r}
+income_hist <- ggplot(nlsy.data, aes(x=income,fill=I("steelblue"))) + geom_histogram(bins=100)+theme(legend.position = "none") + xlab("Income")+ylab("Number of Participants")+ labs(title="Histogram of Income")
+ggplotly(income_hist)
+```
+
+The histogram shows the positive skewness of income distribution for the dataset. There are a few participants with Income more than 300,000 and could be the outliers for this dataset. These values are top-coded values and could create inconsistency in the dataset. This could mean that even with infinite value added to the dataset, we won't get the actual estimate for the co-efficients. So I removed all the top-coded values and income=0 values. 
+
+### **d)** Summary of `nlsy.data` after removing top-coded values
+
+```{r}
+nlsy.data <- nlsy.data[-1*which(nlsy.data$income==max(nlsy.data$income,na.rm=TRUE)),]
+nlsy.data<- nlsy.data %>% filter(nlsy.data$income >0)
+nlsy.data_summary <- nlsy.data %>% select(income,gender,race,birth_country,urban_or_rural,family_size)
+nlsy.summary <- summary(nlsy.data_summary)
+nlsy.summary_kable <- kable(summary(nlsy.data_summary))
+nlsy.summary_kable
+
+
+```
+
+Analysis:  There are `r nrow(nlsy.data)` rows in the final dataset `nlsy.data` that will be used for the analysis.
+
+The above summary shows that the mean income is 46712 and the median income is 40000. This might be an indication that the income distribution for this dataset is positively skewed or right skewed but not much skewness. This can be also seen in the histogram below.  The above summary also tells us the count of different factors in categorical variables - `gender`, `race`, `birth_country`,`urban_or_rural`. The average family size in the dataset is 2.6 (approximately 3). [The NA is for categorical variable which obviously cannot produce mean and median unlike numeric variables]
+
+
+```{r}
+income_hist <- ggplot(nlsy.data, aes(x=income,fill=I("steelblue"))) + geom_histogram(bins=100)+theme(legend.position = "none") + xlab("Income")+ylab("Number of Participants")+ labs(title="Histogram of Income")
+ggplotly(income_hist)
+```
+
+```{r}
+income_gender_hist <- ggplot(data = nlsy.data, aes(x = income, fill = gender)) +
+  geom_histogram(alpha=0.7,bins=100) +xlab("Income")+ylab("Number of Participants")+labs(title= "Histogram of Income by Gender")
+income_gender_hist
+```
+
+The histogram shows the number of participants across income by gender. It can be clearly seen that there are more Men than Women across across the income distribution.Can be seen in the upper tail that there are hardly any women indicating that men might be getting paid more than women.
+
+### **e)** Plots of `race`, `gender`,`birth_country`,`urban_or_rural` and `family_size` with `income`
+
+```{r}
+income_race<- ggplot(nlsy.data,aes(x=race,y=income,fill=I("red")))+geom_bar(stat="identity")+xlab("Race")+ylab("Income$")+theme(legend.position = "none")+labs(title= "Income and Race")
+income_gender<-ggplot(nlsy.data,aes(x=gender,y=income,fill=I("blue")))+geom_boxplot()+xlab("Gender")+ylab("Income$")+theme(legend.position = "none")+labs(title= "Income and Gender")
+income_birth_country<-ggplot(nlsy.data,aes(x=birth_country,y=income,fill=I("green")))+geom_boxplot()+xlab("Birth Country")+ylab("Income$")+theme(legend.position = "none")+labs(title= "Income and Birth Country")
+income_urban_or_rural<-ggplot(nlsy.data,aes(x=urban_or_rural,y=income,fill=I("yellow")))+geom_boxplot()+xlab("Urban/Rural")+ylab("Income$")+theme(legend.position = "none")+labs(title= "Income and Urban/Rural")
+income_family_size<- ggplot(nlsy.data,aes(x=family_size,y=income,fill=I("purple")))+geom_bar(stat="identity")+xlab("Family Size")+ylab("Income$")+theme(legend.position = "none")+labs(title= "Income and Family Size")
+income_race_boxplot<- ggplot(nlsy.data,aes(x=race,y=income,fill=I("red")))+geom_boxplot()+xlab("Race")+ylab("Income$")+theme(legend.position = "none")+labs(title= "Income and Race")
+ggplotly(income_gender)
+ggplotly(income_race_boxplot)
+ggplotly(income_birth_country)
+ggplotly(income_urban_or_rural)
+
+```
+**Income vs Race Boxplot**: It can be seen from the boxplot that Others (non black, non hispanic) population have a higher median income of 44000  than black (median income = 30000) and hispanic (median income = 40000) population. This is an indication that the income varies by race. 
+
+**Income vs Gender Boxplot**: It can be seen from the boxplot that Men have a higher median income of 48000 than women (median income = 33217).This is an indication that the income varies by gender.
+
+**Income vs Birth Country Boxplot**: It can be seen from the boxplot that population born outside US seem to have a slighthy higher  median income of 42000 than population born in US (median income = 40000).However the upper fence seem to be more for population born in US as compared to the population born outside US. Thus we can't be sure if the income varies by birth country. 
+
+```{r}
+ggplotly(income_family_size)
+```
+
+**Income vs Family Size**: The income seems to be more for participants with a family size between 2-3. However we can't be completely sure since the mean family size of the participants is around 3 suggesting that the sample is not equally distributed. We need to analyze further if family size can be a predictor of income or not. 
+
+
+### **d)** Summary of `nlsy.data` grouped by gender,race,birth_country and urban_or_rural
+```{r}
+nlsy.data_summarybygender <- nlsy.data %>% group_by(Gender=gender,Race=race,BirthCountry=birth_country,Urban_or_Rural=urban_or_rural) %>% summarize(Sample= n(),Avg.Income= mean(income), Std.Deviation = sd(income), Std.error= round((Std.Deviation/sqrt(n())),2))
+kable(nlsy.data_summarybygender)
+```
+
+The above summary table shows the average income for different set of parameters along with the standard deviation. The sample tells us how many individuals belong to the combination of parameters mentioned. It can be seen that Black and Hispanic population born outside US and staying in rural areas are very few in the entire sample. This might cause bias in my analysis.Population born in US and staying in urban areas form most of our sample and ; men more than women across the race. 
+
+## Significance tests and error plots
+
+### **a)** Hypothesis Test for `income` vs `gender` 
+
+Since the research question is to understand the significance of income gap between men and women, by hypothesis test I tried to see if the gap is significant.
+
+```{r}
+hypothesis_income.gender <- t.test(nlsy.data$income~ nlsy.data$gender)
+hypothesis_income.gender
+```
+```{r}
+income.diff <- round(hypothesis_income.gender$estimate[1] - hypothesis_income.gender$estimate[2], 1)
+
+# Confidence level as a %
+conf.level <- attr(hypothesis_income.gender$conf.int, "conf.level")*100
+
+```
+  On average the income is `r income.diff` higher for men compared to women (t-statistic `r round(hypothesis_income.gender$statistic,2)`, p=`r round(hypothesis_income.gender$p.value, 3)`, `r conf.level`% CI [`r round(hypothesis_income.gender$conf.int,1)`]). Since p-value is 0, we can be sure that income gap between men and women is significant. 
+ 
+
+### **b)** Income Gap by Race, Birth Country and Urban or Rural
+
+**Now through plots lets see how the income gap depends on `race`,`birth_country` and `urban_or_rural`**
+
+1) Income gap by Race
+```{r}
+gap.data.conf1 <- nlsy.data %>%
+  group_by(race) %>%
+  summarize(income.gap = mean(income[gender == "Male"], na.rm = TRUE) -
+              mean(income[gender == "Female"], na.rm = TRUE),
+            upper = t.test(income ~ gender)$conf.int[2],
+                       lower = t.test(income ~ gender)$conf.int[1],
+                       is.significant = as.numeric(t.test(income ~ gender)$p.value < 0.05))
+
+# Re-order the race factor according to gap size
+gap.data.conf1 <- mutate(gap.data.conf1,
+                        race = reorder(race, income.gap))
+
+# Plot, with error bars
+incomegap_race <- ggplot(data = gap.data.conf1, aes(x = race, y = income.gap,
+                            fill = I("red"))) +
+  geom_bar(stat = "identity") +
+  xlab("Race") + 
+  ylab("Income gap($)") +
+  ggtitle("Income gap between men and women, by race") + 
+  guides(fill = FALSE) +
+  geom_errorbar(aes(ymax = upper, ymin = lower), width = 0.1, size = 1) +
+  theme(text = element_text(size=12),legend.position = "none") 
+incomegapbyrace <- nlsy.data %>% group_by(Gender=gender,Race=race)%>% summarize(Avg.Income= mean(income), Std.Deviation = sd(income), Std.error= round((Std.Deviation/sqrt(n())),2))
+kable(incomegapbyrace)
+
+```
+
+```{r}
+ggplotly(incomegap_race)
+```
+
+The income gap is significant across the race. The income gap seems to be highest for Others (non black, non hispanic) population followed by Hispanic and Black population. Since the error bars are not overlapping, we can say that race can be a significant predictor of income gap between men and women. 
+
+2) Income gap by Birth Country
+
+```{r}
+gap.data.conf2 <- nlsy.data %>%
+  group_by(birth_country) %>%
+  summarize(income.gap = mean(income[gender == "Male"], na.rm = TRUE) -
+              mean(income[gender == "Female"], na.rm = TRUE),
+            upper = t.test(income ~ gender)$conf.int[2],
+                       lower = t.test(income ~ gender)$conf.int[1],
+                       is.significant = as.numeric(t.test(income ~ gender)$p.value < 0.05))
+
+# Re-order the race factor according to gap size
+gap.data.conf2 <- mutate(gap.data.conf2,
+                        birth_country = reorder(birth_country, income.gap))
+
+# Plot, with error bars
+incomegap_birthcountry <- ggplot(data = gap.data.conf2, aes(x = birth_country, y = income.gap,
+                            fill = I("green"))) +
+  geom_bar(stat = "identity") +
+  xlab("Birth Country") + 
+  ylab("Income gap($)") +
+  ggtitle("Income gap between men and women, by birth country") + 
+  guides(fill = FALSE) +
+  geom_errorbar(aes(ymax = upper, ymin = lower), width = 0.1, size = 1) +
+  theme(text = element_text(size=12),legend.position="none") 
+incomegapbycountry <- nlsy.data %>% group_by(Gender=gender,BirthCountry=birth_country)%>% summarize(Avg.Income= mean(income), Std.Deviation = sd(income), Std.error= round((Std.Deviation/sqrt(n())),2))
+kable(incomegapbycountry)
+
+```
+
+```{r}
+ggplotly(incomegap_birthcountry)
+```
+
+The income gap seems to be more for participants born outside US as compared to the ones born in US. This can be also seen that the standard error is quite high which might indicate that sample for participants born outside US is not large enough and show some notable irregularities. This would in turn mean that I can't be very confident yet if the income gap is significant across the birth country variable although the income gap is significant for a particular category of birth country. This is also supplemeted by the fact that the error bars are overlapping each other across the birth_country variable. 
+
+3) Income Gap by Urban or Rural
+
+```{r}
+gap.data.conf3 <- nlsy.data %>%
+  group_by(urban_or_rural) %>%
+  summarize(income.gap = mean(income[gender == "Male"], na.rm = TRUE) -
+              mean(income[gender == "Female"], na.rm = TRUE),
+            upper = t.test(income ~ gender)$conf.int[1],
+                       lower = t.test(income ~ gender)$conf.int[2],
+                       is.significant = as.numeric(t.test(income ~ gender)$p.value < 0.05))
+
+# Re-order the race factor according to gap size
+gap.data.conf3 <- mutate(gap.data.conf3,
+                        urban_or_rural = reorder(urban_or_rural, income.gap))
+
+# Plot, with error bars
+incomegap_urbanorrural <- ggplot(data = gap.data.conf3, aes(x = urban_or_rural, y = income.gap,
+                            fill = I("yellow"))) +
+  geom_bar(stat = "identity") +
+  xlab("Urban or Rural") + 
+  ylab("Income gap($)") +
+  ggtitle("Income gap between men and women, by urban/rural") + 
+  guides(fill = FALSE) +
+  geom_errorbar(aes(ymax = upper, ymin = lower), width = 0.1, size = 1) +
+  theme(text = element_text(size=12),legend.position = "none")
+incomegapbyurban <- nlsy.data %>% group_by(Gender=gender,Urban_or_Rural=urban_or_rural)%>% summarize(Avg.Income= mean(income), Std.Deviation = sd(income), Std.error= round((Std.Deviation/sqrt(n())),2))
+kable(incomegapbyurban)
+
+```
+
+```{r}
+ggplotly(incomegap_urbanorrural)
+```
+
+Income gap seems to be significant urban areas and rural areas. However we can't be yet sure if the income gap is significant across the Urban or Rural variable (depends whether the participant is born in urban area or not). This is supplemented by the fact that the error bars are overlapping for urban and rural. 
+
+## Regression Model
+
+### **a)** Linear regression model of income with all the chosen variables 
+
+I started by creating a linear regression model of income with all the chosen variables. The table below gives the estimate, std.error, t value and p value of this model. This is a model that shows effect of the independent variables on income only. This doesn't assure that the income gap depends on these variables. 
+
+```{r}
+nlsy.main <- lm(income ~ gender+race+birth_country+urban_or_rural+family_size,data=nlsy.data)
+nlsy.main1 <- summary(nlsy.main)
+nlsy.main1
+kable (coef(nlsy.main1),digits=c(0,0,2,4))
+```
+
+**Analysis of Main Regression Model**
+
+  From the main regression model all the variables except birth country seem to be a significant predictor of income since p-value for all the variables except birth country is less than 0.05 (95% confidence interval). The intercept means that for an Other Male born outside US and currently staying a rural area, on average has an income of  51197. The co-efficient for genderFemale means that a female, keeping everything same as of the male  earns on an average 14546 less than that male (intercept). The raceBlack co-efficient tells us that keeping everything else same , a black person  earns on an average 12827 less than an Other person. The raceHispanic co-efficient tells us that keeping everything else same a hispanic person  earns on an average 8319 less than an other person. The Urban_or_ruralurban coefficient tells us that a person currently living in urban area(controlling for everything else) earns on an average 6406 more than a person currently living in rural area. For every increase of 1 in family size , controlling for everything the income increases by  1741. 
+
+  
+
+### **b)** Regression plots for the main model 
+
+```{r}
+plot(nlsy.main)
+```
+
+**Residuals vs. Fitted**: The plot shows non-constant variance. The line also shows a slight indication of non-linear trend. 
+
+**Normal QQ plot**: The residuals appear highly non-normal. Both the upper and lower tails are heavier than we would expect under normality. 
+
+**Scale-location plot**: The plot shows that the model has non-constant variance since the slope of the line is incraesing for most part of it. 
+
+**Residuals vs Leverage**: There are no values which are influential on the model since all the datapoints seem to be within the cook's distance. The plot even doesn't capture the dashed cook's distance line. This indicated that the data points don't have high residual or leverage. 
+
+### **c)** Linear regression model of income with all the chosen variables except `race`. (ANOVA comparision)
+
+This comparision tells us if race is a significant predictor of income or not. 
+
+```{r}
+anova(update(nlsy.main, . ~ . - race), nlsy.main)
+```
+Race turns out to be a highly statistically signficant predictor of income in the model (p-value <0.05). You can see also by looking at the coefficient estimates and standard errors — the estimated coefficients are very large, with relatively small standard errors.
+
+### **d)** Linear regression model of income with all the chosen variables except `birth_country`. (ANOVA comparision)
+
+This comparision tells us if race is a significant predictor of income or not. 
+
+```{r}
+anova(update(nlsy.main, . ~ . - birth_country), nlsy.main)
+```
+Birth Country turns out to be a non signficant predictor of income in the model (p-value>0.05). You can see also by looking at the coefficient estimates and standard errors — the estimated coefficients are small, with relatively high standard errors.
+
+### **e)** Linear regression model of income with all the chosen variables except `urban_or_rural`. (ANOVA comparision)
+
+This comparision tells us if race is a significant predictor of income or not. 
+
+```{r}
+anova(update(nlsy.main, . ~ . - urban_or_rural), nlsy.main)
+```
+
+Urban_or_rural turns out to be a highly statistically signficant predictor of income in the model (p-value <0.05). You can see also by looking at the coefficient estimates and standard errors — the estimated coefficients are very large, with relatively small standard errors.
+
+### **f)** Linear regression model of income with all the chosen variables except `family_size`. (ANOVA comparision)
+
+This comparision tells us if race is a significant predictor of income or not. 
+
+```{r}
+anova(update(nlsy.main, . ~ . - family_size), nlsy.main)
+```
+
+Family size turns out to be a highly statistically signficant predictor of income in the model(p-value <0.05). You can see also by looking at the coefficient estimates and standard errors — the estimated coefficients are very large, with relatively small standard errors.
+
+## Linear regression model of income and interaction of different variables with gender
+
+### **a1)** Interaction between Gender and Race (linear model) 
+
+```{r}
+nlsy.interact1 <- update(nlsy.main, . ~ . + race*gender)
+
+summary(nlsy.interact1)
+
+kable(coef(summary(nlsy.interact1)),digits=c(0,0,2,4))
+```
+
+The interaction between gender and race is significant (p-value <0.05). This suggests that income gap between men and women is significant across all the race. The co-efficient of genderFemale:raceBlack suggests that controlling for everything in the model, the income gap between men and women for race Black is on an average 11024.3 more than income gap between men and women for race Other. Similarly co-efficient of genderFemale:raceHispanic suggests that controlling for everything in the model, the income gap between men and women for race Hispanic is on an average 7793.8 more than income gap between men and women for race Other. 
+
+### **a2)** Interaction between Gender and Race (ANOVA comparision with main model)
+
+```{r}
+anova(nlsy.interact1,nlsy.main)
+```
+The interaction between gender and race is significant (p-value <0.05). This suggests that income gap between men and women is significant across all the race
+
+### **b1)** Interaction between Gender and Birth Country (linear model) 
+
+```{r}
+nlsy.interact2 <- update(nlsy.main, . ~ . + gender*birth_country)
+
+summary(nlsy.interact2)
+
+kable(coef(summary(nlsy.interact2)),digits=c(0,0,2,4))
+```
+
+The interaction between gender and birth country is non-significant (p-value >0.05). This suggests that birth country is not a significant predictor of income gap between men and women. 
+
+### **b2)** Interaction between Gender and Birth Country (ANOVA comparision with main model)
+
+```{r}
+anova(nlsy.interact2,nlsy.main)
+```
+
+From the ANOVA analysis also, The interaction between gender and birth country is non-significant (p-value >0.05). This suggests that birth country is not a significant predictor of income gap between men and women. 
+
+### **c1)** Interaction between Gender and Urban/Rural (linear model) 
+
+```{r}
+nlsy.interact3 <- update(nlsy.main, . ~ . + gender*urban_or_rural)
+
+summary(nlsy.interact3)
+
+kable(coef(summary(nlsy.interact3)),digits=c(0,0,2,4))
+```
+
+The interaction between gender and urban_or_rural is non-significant (p-value >0.05). This suggests that urban_or_rural is not a significant predictor of income gap between men and women.
+
+### **c2)** Interaction between Gender and Urban/Rural (ANOVA comparision with main model)
+
+```{r}
+anova(nlsy.interact3,nlsy.main)
+```
+
+From the ANOVA analysis also it is clear that the interaction between gender and urban_or_rural is non-significant (p-value >0.05). This suggests that urban_or_rural is not a significant predictor of income gap between men and women.
+
+### **d1)** Interaction between Gender and Family Size (linear model) 
+
+```{r}
+nlsy.interact4 <- update(nlsy.main, . ~ . + gender*family_size)
+
+summary(nlsy.interact4)
+
+kable(coef(summary(nlsy.interact4)),digits=c(0,0,2,4))
+```
+
+The interaction between gender and family size is significant(p-value <0.05). This suggests that income gap between men and women is significant for family size. The co-efficient of genderFemale:family_size suggests that controlling for everything in the model, the income gap between men and women decreases by -4287.9 for every 1 increase in family size. 
+
+### **d2)** Interaction between Gender and Family Size (ANOVA comparision with main model)
+
+```{r}
+anova(nlsy.interact4,nlsy.main)
+```
+
+From the ANOVA analysis also it is clear that the interaction between gender and family size is significant (p-value <0.05). This suggests that income gap between men and women is significant for family size.
+
+## Conclusion
+
+1) There is a significant income gap between men and women (`income` and `gender`)for the participants in the `nlsy.data` dataset.  
+
+2) From the analysis we can say that `race` and `family_size` are significant predictors for income gap between men and women. On the other side the `birth_country` and `urban_or_rural` are not significant predictors on income gap for the given dataset. 
+
+ 
+
+
