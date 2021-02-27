@@ -20,7 +20,7 @@ Urban/ Rural(2012): Gender is a categorical variable. There are two categories- 
 
 Family Size(2012): Family is a discrete numeric variable.
 
-## Requiremets :
+## Requirements :
 
 - R studio 
 
